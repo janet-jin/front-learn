@@ -1,0 +1,216 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+	<meta name='author' content='Zswang 王集鹄 2011年1月19日'>
+	<title>10进制浮点数转化为64进制</title>
+	<script>
+	/**
+	* 无限进制整数命名空间
+	*/
+	var Integer = Integer || {};
+	(function() {
+		/**
+		* 进制字符串
+		*/
+		var scaleChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/";
+		
+		/**
+		* 向前补零 "1",5 -> "00001"
+		* @param {String} n 整数字符串
+		* @param {Number} len 长度
+		* @return {String} 返回补零后的字符串
+		*/
+		function fullZero(n, len) {
+			return new Array(len - n.length + 1).join("0") + n;
+		}
+		
+		/**
+		* 清理整数前面无效的零 "000000001" -> "1"
+		* @param {String} n 整数字符串
+		* @return {String} 返回格式化后的整数字符串
+		*/
+		function format(n) {
+			return n.replace(/^0+(.+)$/, "$1");
+		}
+		
+		/**
+		* 比较两个整数的大小 "1","0" -> +1
+		* @param {String} a
+		* @param {String} b
+		* @return {Number} a>b返回+1,a==b返回0,a<b返回-1
+		*/
+		function compare(a, b) {
+			var i = Math.max(a.length, b.length), ta, tb;
+			a = fullZero(a, i);
+			b = fullZero(b, i);
+			for (i = 0; i < a.length; i++) {
+				ta = scaleChars.indexOf(a.charAt(i));
+				tb = scaleChars.indexOf(b.charAt(i));
+				if (ta < tb) return -1;
+				if (ta > tb) return +1;
+			}
+			return 0;
+		}
+		//console.log(compare("01", "1"));
+		//console.log(compare("0a1", "ab1"));
+		
+		/**
+		* 无限进制的加法
+		* @param {String} a 整数1
+		* @param {String} b 整数2
+		* @param {Number} scale 进制 2-64
+		* @return {String} 返回两个数的和
+		*/
+		function add(a, b, scale) {
+			if (scale < 2 || scale > 64) return;
+			a = format(a);
+			b = format(b);
+			var i = Math.max(a.length, b.length), t = 0, result = [];
+			a = fullZero(a, i);
+			b = fullZero(b, i);
+			while (i--) {
+				t += scaleChars.indexOf(a.charAt(i));
+				t += scaleChars.indexOf(b.charAt(i));
+				result.unshift(scaleChars.charAt(t % scale));
+				t = t / scale;
+			}
+			if (t) result.unshift(scaleChars.charAt(t % scale));
+			return format(result.join(""));
+		}
+		//console.log(add("19", "1234", 10));
+		
+		/**
+		* 无限位数乘法函数,单个数乘无限进制整数
+		* @param {String} n 整数
+		* @param {Number} b 单个数
+		* @param {Number} scale 进制 2-64
+		* @return {String} 返回n和b的乘积
+		*/
+		function byteMult(n, b, scale) {
+			//if (scale < 2 || scale > 64) return;
+			var result = [], t = 0, i = n.length;
+			while (i--) {
+				t = scaleChars.indexOf(n.charAt(i)) * b + t;
+				result.unshift(scaleChars.charAt(t % scale));
+				t = t / scale;
+			}
+			if (t) result.unshift(scaleChars.charAt(t % scale));
+			return result.join("");
+		}
+		//console.log(byteMult("555", 12, 10));
+		//console.log(byteMult("25", 8, 10));
+		
+		/**
+		* 无限整数乘法
+		* @param {String} a 整数1
+		* @param {String} b 整数2
+		* @param {Number} scale 进制 2-64
+		* @return {String} 返回两个数的乘积
+		*/
+		function mult(a, b, scale) {
+			if (scale < 2 || scale > 64) return;
+			a = format(a);
+			b = format(b);
+			var t = "", result = "", i = b.length;
+			while (i--) {
+				result = add(result, byteMult(a, scaleChars.indexOf(b.charAt(i)), scale) + t, scale);
+				t += "0";
+			}
+			return result;
+		}
+		//console.log(mult("555", "12", 10)); // 6660
+		//console.log(mult("25", "8", 10)); // 200
+		
+		/**
+		* 无限整数的次方
+		* @param {String} base 指数
+		* @param {String} exponent 幂数
+		* @param {Number} scale 进制 2-64
+		* @return {String} 返回base的exponent次方
+		*/
+		function power(base, exponent, scale) {
+			if (scale < 2 || scale > 64 || exponent < 0) return;
+			base = format(base);
+			var result = "1", i = exponent;
+			while (i--) {
+				result = mult(result, base, scale);
+			}
+			return result;
+		}
+		//console.log(power("2", 10, 10)); // 1024
+		
+		/**
+		* 将一个字符转换为指定进制
+		* @param {String} c 单个字符
+		* @param {Number} from 来源进制 2-64
+		* @param {Number} to 目标进制 2-64
+		* @return {String} 返回转换后的数字
+		*/
+		function charDigit(c, from, to) {
+			//if (from == to || from < 2 || from > 64 || to < 2 || to > 64 || c == "0") return c;
+			var result = "0", t = "0";
+			while (compare(t, c) < 0) {
+				result = add(result, "1", to);
+				t = add(t, "1", from);
+			}
+			return result;
+		}
+		//console.log(charDigit("7", 10, 2)); // 111
+		
+		/**
+		* 进制间的转换
+		* @param {String} n 整数
+		* @param {Number} from 来源进制 2-64
+		* @param {Number} to 目标进制 2-64
+		* @return {String} 返回转换后的数字
+		*/
+		function digit(n, from, to) {
+			if (from == to || from < 2 || from > 64 || to < 2 || to > 64) return n;
+			n = format(n);
+			if (n == "0") return n;
+			var result = "", base = "1", t = "1", m = scaleChars.charAt(from - 1), l = n.length, i;
+			while (compare(t, m) <= 0) {
+				base = add(base, "1", to);
+				t = add(t, "1", from);
+			}
+			for (i = 0; i < l; i++) {
+				result = add(result, mult(
+					charDigit(
+						n.charAt(l - i - 1), from, to
+					), power(base, i, to), to),
+				to);
+			}
+			return result;
+		}
+		
+		//console.log(digit("1024", 10, 2)); // 10000000000
+		//console.log(digit("7", 10, 2)); // 111
+		//console.log(digit("askdjfas91231as", 64, 7)); // 43425343430315560320062336416102
+		//console.log(digit(digit("askdjfas91231as", 64, 7), 7, 64)); // askdjfas91231as
+
+		// 公开接口
+		Integer.add = add;
+		Integer.mult = mult;
+		Integer.power = power;
+		Integer.digit = digit;
+	})();
+	</script>
+</head>
+<body>
+	<script>
+		var str = "1234567891234";
+		function n10To64(value) {
+			if (!value) return;
+			value = Integer.digit(value, 10, 64);
+			var a = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/";
+			var b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+			return value.replace(/[a-z\d+\/]/ig, function(all) {
+				return b.charAt(a.indexOf(all));
+			});
+		}
+		document.write(n10To64(str)); // R9x+wki 
+	</script>
+</body>
+</html>

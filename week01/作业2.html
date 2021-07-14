@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+  <meta name='author' content='Zswang 王集鹄 2011年1月19日'>
+  <title>读取本地图片并转化为灰度图片</title>
+</head>
+
+<body>
+  <input type="file" id="selectFiles" onchange="dealSelectFiles()" multiple webkitdirectory>
+  <br />
+  转化之后的灰色图片:<br />
+  <img id="greyPic"></img>
+  <canvas id="myCanvas" ></canvas>
+</body>
+<script>
+  var imgPosX = 0;
+  var imgWidth = 256;
+  function dealSelectFiles() {
+    /// get select files.
+    var selectFiles = document.getElementById("selectFiles").files;
+
+    for (var file of selectFiles) {
+      console.log(file.webkitRelativePath);
+      /// read file content.
+      var reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = function () {
+        /// deal data.
+        var img = new Image();
+        /// after loader, result storage the file content result.
+        img.src = this.result;
+        
+        img.onload = function () {
+          console.log(img.width,img.height)
+          document.getElementById("greyPic").src =  gray(img);
+          // var myCanvas = document.getElementById("myCanvas");
+          // var cxt = myCanvas.getContext('2d');
+          // cxt.drawImage(img, imgPosX, 0);
+          // console.log(img)
+          // imgPosX += imgWidth;
+        }
+      }
+    }
+  }
+
+  function gray(imgObj) {
+    var canvas = document.createElement('canvas');
+    var canvasContext = canvas.getContext('2d');
+    var imgW = imgObj.width;
+    var imgH = imgObj.height;
+    canvas.width = imgW;
+    canvas.height = imgH;
+    canvasContext.drawImage(imgObj, 0, 0);
+    var imgPixels = canvasContext.getImageData(0, 0, imgW, imgH);
+    for (var y = 0; y < imgPixels.height; y++) {
+      for (var x = 0; x < imgPixels.width; x++) {
+        var i = (y * 4) * imgPixels.width + x * 4;
+        var avg = (imgPixels.data[i] + imgPixels.data[i + 1] + imgPixels.data[i + 2]) / 3;
+        imgPixels.data[i] = avg;
+        imgPixels.data[i + 1] = avg;
+        imgPixels.data[i + 2] = avg;
+      }
+    }
+    canvasContext.putImageData(imgPixels, 0, 0, 0, 0, imgPixels.width, imgPixels.height);
+    return canvas.toDataURL();
+  }
+  
+
+</script>
+
+</html>
